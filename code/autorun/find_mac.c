@@ -1,11 +1,4 @@
-#include <dirent.h>
-#include <linux/if.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <stdlib.h> // exit, EXIT_FAILURE
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
+#include "find_mac.h"
 
 void error_and_exit(const char *error_msg) {
   perror(error_msg);
@@ -25,6 +18,7 @@ char *find_devices(char path[]) {
     error_and_exit("Could not open given directory");
   }
 
+  //Hard_coded to look for the WLAN (wl)
   while ((de = readdir(dr)) != NULL) {
     if (de->d_name[0] == 'w' && de->d_name[1] == 'l') {
       closedir(dr);
@@ -47,8 +41,10 @@ int mac_address(char interface[]) {
   strcpy(s.ifr_name, interface);
   if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
     int i;
-    for (i = 0; i < 6; ++i)
-      printf(" %02x", (unsigned char)s.ifr_addr.sa_data[i]);
+    for (i = 0; i < 6; ++i) {
+
+      printf("%02x", (unsigned char)s.ifr_addr.sa_data[i]);
+    }
     puts("\n");
     return 0;
   }
