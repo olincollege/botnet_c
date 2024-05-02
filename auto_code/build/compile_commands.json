@@ -1,0 +1,12 @@
+[
+{
+  "directory": "/home/trinity/Documents/botnet_c/auto_code/build",
+  "command": "/usr/bin/gcc   -g -o CMakeFiles/util.dir/util.c.o -c /home/trinity/Documents/botnet_c/auto_code/util.c",
+  "file": "/home/trinity/Documents/botnet_c/auto_code/util.c"
+},
+{
+  "directory": "/home/trinity/Documents/botnet_c/auto_code/build",
+  "command": "/usr/bin/gcc   -g -o CMakeFiles/auto_client.dir/auto_client.c.o -c /home/trinity/Documents/botnet_c/auto_code/auto_client.c",
+  "file": "/home/trinity/Documents/botnet_c/auto_code/auto_client.c"
+}
+]

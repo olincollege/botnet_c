@@ -1,0 +1,4 @@
+/home/trinity/Documents/botnet_c/auto_code/build/CMakeFiles/util.dir
+/home/trinity/Documents/botnet_c/auto_code/build/CMakeFiles/auto_client.dir
+/home/trinity/Documents/botnet_c/auto_code/build/CMakeFiles/edit_cache.dir
+/home/trinity/Documents/botnet_c/auto_code/build/CMakeFiles/rebuild_cache.dir
