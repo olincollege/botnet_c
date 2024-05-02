@@ -89,24 +89,17 @@ int test_recv_send(FILE *socket_file) {
     }
   }
   fflush(socket_file); // Ensure the data is sent immediately
-
-  // Close the output pipe
-  pclose(output_pipe);
-
-  // Clean up
-  free(recv_line);
-
+  pclose(output_pipe); // Close the output pipe
+  free(recv_line);     // Clean up
   return 0;
 }
 int main(int argc, char *argv[]) {
-  fd_set readfds, testfds, clientfds;
 
   /*Client variables*/
 
   struct hostent *hostinfo;
 
   /*Client*/
-
   printf("\n*** Client program starting (enter \"quit\" to stop): \n");
   fflush(stdout);
 
