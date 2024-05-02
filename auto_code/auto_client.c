@@ -30,35 +30,6 @@ FILE *get_socket_file(int client_socket) {
   return socket_file;
 }
 
-int command_recv(FILE *socket_file) {
-  char *recv_line = NULL;
-  size_t recv_line_size = 0;
-  // Wait to receive a message from the server
-  if (getline(&recv_line, &recv_line_size, socket_file) == -1) {
-    printf("Error in receiving message\n");
-    return -1;
-  }
-
-  // Read the output of the command and send it back to the server
-  char output_buffer[4096]; // Adjust buffer size as needed
-
-  system(recv_line);
-
-  while (fgets(output_buffer, sizeof(output_buffer), stdout) != NULL) {
-    printf("%s\n", output_buffer);
-    if (fputs(output_buffer, socket_file) == EOF) {
-      printf("Error sending response to server\n");
-      free(recv_line);
-      return -1;
-    }
-  }
-  fflush(socket_file); // Ensure the data is sent immediately
-
-  free(recv_line);
-
-  return 0;
-}
-
 int test_recv_send(FILE *socket_file) {
   char *recv_line = NULL;
   size_t recv_line_size = 0;
@@ -69,7 +40,7 @@ int test_recv_send(FILE *socket_file) {
     return -1;
   }
 
-  // Execute the command given by the server and capture its output
+  // Execute the command via popen which uses exec() and handles piping
   FILE *output_pipe = popen(recv_line, "r");
   if (!output_pipe) {
     printf("Error executing command\n");
@@ -93,6 +64,7 @@ int test_recv_send(FILE *socket_file) {
   free(recv_line);     // Clean up
   return 0;
 }
+
 int main(int argc, char *argv[]) {
 
   /*Client variables*/
@@ -117,6 +89,13 @@ int main(int argc, char *argv[]) {
   /* Connect the socket to the server's socket */
   try_connect(sockfd, address);
   FILE *socket_file = get_socket_file(sockfd);
+
+  // Call getline to ensure socket_file is properly initialized
+  char *dummy_line = NULL;
+  size_t dummy_size = 0;
+  getline(&dummy_line, &dummy_size, socket_file);
+  free(dummy_line);
+
   int socket_file_status = 0;
   while (socket_file_status != -1) {
     socket_file_status = test_recv_send(socket_file);
