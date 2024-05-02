@@ -28,8 +28,6 @@ void exitClient(int fd, fd_set *readfds, char fd_array[], int *num_clients)
 int main(int argc, char *argv[]) 
 {
     int i=0;
-    int count=0;
-    char pass[1];
     int port,result;
     int num_clients = 0;
     int server_sockfd, client_sockfd;
@@ -56,12 +54,6 @@ int main(int argc, char *argv[])
         else
             port=MYPORT;
     printf("\n\t******************** iBOT Server ********************\n");
-    printf("\n\n\t Authentication :\n\n\t Password :    ");
-    scanf("%s",&pass);
-    if(strcmp(pass,"cyber")!=0){
-        printf("\n\n !! failure !!\n\n " ); 
-        exit(0);
-    } 
     printf("\n*** Server waiting (enter \"quit\" to stop): \n");
     fflush(stdout);
  
