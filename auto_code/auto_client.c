@@ -29,37 +29,6 @@ FILE *get_socket_file(int client_socket) {
   return socket_file;
 }
 
-char *getSystemCommandOutput(const char *command) {
-  int MAX_BUFFER_SIZE = 100;
-  char buffer[MAX_BUFFER_SIZE];
-  char *result = NULL;
-  FILE *pipe = popen(command, "r");
-
-  if (!pipe) {
-    printf("Error: Failed to execute command.\n");
-    return NULL;
-  }
-
-  while (fgets(buffer, MAX_BUFFER_SIZE, pipe) != NULL) {
-    // Append the output to the result string
-    if (result == NULL) {
-      result = strdup(buffer);
-    } else {
-      char *temp = realloc(result, strlen(result) + strlen(buffer) + 1);
-      if (temp == NULL) {
-        printf("Error: Memory allocation failed.\n");
-        free(result);
-        pclose(pipe);
-        return NULL;
-      }
-      result = temp;
-      strcat(result, buffer);
-    }
-  }
-
-  pclose(pipe);
-  return result;
-}
 int command_recv(FILE *socket_file) {
   char *recv_line = NULL;
   size_t recv_line_size = 0;
@@ -130,8 +99,6 @@ int main(int argc, char *argv[]) {
   int socket_file_status = 0;
   while (socket_file_status != -1) {
     socket_file_status = command_recv(socket_file);
-
-    // socket_file_status = command_recv(socket_file);
   }
 
   if (!feof(stdin) && !feof(socket_file)) {
