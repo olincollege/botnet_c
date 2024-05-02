@@ -2,5 +2,5 @@ add_library(util util.c util.h)
 
 
 add_executable(auto_client auto_client.c)
-target_link_libraries(run_client PRIVATE util)
+target_link_libraries(auto_client PRIVATE util)
 
