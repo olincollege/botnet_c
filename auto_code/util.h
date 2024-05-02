@@ -28,19 +28,6 @@ noreturn void error_and_exit(const char *error_msg);
 int open_tcp_socket(void);
 
 /**
- * Return the sockaddr_in corresponding to an address and port.
- *
- * Given an address and port number, convert their representations to network
- * byte order and assemble them into an approopriate sockaddr_in. The returned
- * value can then be used to bind to or connect to a socket.
- *
- * @param addr The address to bind or connect the socket to, in host order.
- * @param port The port number to bind or connect the socket to, in host order.
- * @return A sockaddr_in structure to use with bind/connect, in network order.
- */
-struct sockaddr_in socket_address(in_addr_t addr, in_port_t port);
-
-/**
  *
  * Closes TCP scoket and ends program
  */

@@ -20,17 +20,9 @@ int open_tcp_socket(void) {
   return listener_d;
 }
 
-void close_tcp_socket(int sockfd){
+void close_tcp_socket(int sockfd) {
   close(sockfd);
   exit(0);
 }
 
-struct sockaddr_in socket_address(in_addr_t addr, in_port_t port) {
-  struct sockaddr_in name = {
-      .sin_family = AF_INET,
-      .sin_port = (in_port_t)htons(port),
-      .sin_addr.s_addr = htonl(addr),
-  };
-  return name;
 
-}
