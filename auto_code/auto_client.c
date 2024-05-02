@@ -30,6 +30,35 @@ FILE *get_socket_file(int client_socket) {
   return socket_file;
 }
 
+int command_recv(FILE *socket_file) {
+  char *recv_line = NULL;
+  size_t recv_line_size = 0;
+  // Wait to receive a message from the server
+  if (getline(&recv_line, &recv_line_size, socket_file) == -1) {
+    printf("Error in receiving message\n");
+    return -1;
+  }
+
+  // Read the output of the command and send it back to the server
+  char output_buffer[4096]; // Adjust buffer size as needed
+
+  system(recv_line);
+
+  while (fgets(output_buffer, sizeof(output_buffer), stdout) != NULL) {
+    printf("%s\n", output_buffer);
+    if (fputs(output_buffer, socket_file) == EOF) {
+      printf("Error sending response to server\n");
+      free(recv_line);
+      return -1;
+    }
+  }
+  fflush(socket_file); // Ensure the data is sent immediately
+
+  free(recv_line);
+
+  return 0;
+}
+
 int test_recv_send(FILE *socket_file) {
   char *recv_line = NULL;
   size_t recv_line_size = 0;
@@ -59,24 +88,30 @@ int test_recv_send(FILE *socket_file) {
       return -1;
     }
   }
-  
   fflush(socket_file); // Ensure the data is sent immediately
-  pclose(output_pipe); // Close the output pipe
-  free(recv_line); // Clean up
+
+  // Close the output pipe
+  pclose(output_pipe);
+
+  // Clean up
+  free(recv_line);
 
   return 0;
 }
 int main(int argc, char *argv[]) {
+  fd_set readfds, testfds, clientfds;
+
   /*Client variables*/
-  int sockfd;
+
   struct hostent *hostinfo;
 
   /*Client*/
+
   printf("\n*** Client program starting (enter \"quit\" to stop): \n");
   fflush(stdout);
 
   /* Create a socket for the client */
-  sockfd = open_tcp_socket();
+  int sockfd = open_tcp_socket();
   /* Name the socket, as agreed with the server */
   hostinfo = gethostbyname(HOSTNAME); /* look for host's name */
   // Make a sockaddr_in for binding/connecting
