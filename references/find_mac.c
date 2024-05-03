@@ -1,5 +1,7 @@
 #include "find_mac.h"
 
+#include <unistd.h>
+
 void error_and_exit(const char *error_msg) {
   perror(error_msg);
   // NOLINTNEXTLINE(concurrency-mt-unsafe)
@@ -18,7 +20,7 @@ char *find_devices(char path[]) {
     error_and_exit("Could not open given directory");
   }
 
-  //Hard_coded to look for the WLAN (wl)
+  // Hard_coded to look for the WLAN (wl)
   while ((de = readdir(dr)) != NULL) {
     if (de->d_name[0] == 'w' && de->d_name[1] == 'l') {
       closedir(dr);
@@ -30,9 +32,10 @@ char *find_devices(char path[]) {
   return NULL;
 }
 
-int mac_address(char interface[]) {
+void mac_address(char interface[], char addr[]) {
   struct ifreq s;
   int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+  char temp[3];
 
   // Error Checking
   if (fd == -1) {
@@ -40,20 +43,23 @@ int mac_address(char interface[]) {
   }
   strcpy(s.ifr_name, interface);
   if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
-    int i;
-    for (i = 0; i < 6; ++i) {
-
-      printf("%02x", (unsigned char)s.ifr_addr.sa_data[i]);
+    addr[0] = '\0'; // Initialize addr as an empty string
+    for (int i = 0; i < 6; ++i) {
+      sprintf(temp, "%02X", (unsigned char)s.ifr_hwaddr.sa_data[i]);
+      strcat(addr, temp);
     }
-    puts("\n");
-    return 0;
+  } else {
+    perror("Error getting MAC address");
+    exit(EXIT_FAILURE);
   }
-
-  return 1;
+  close(fd); // Close the socket
 }
 
 int main() {
   char *x = find_devices("/sys/class/net");
-  printf("STRING : %s\n", x);
-  mac_address(x);
+  // printf("STRING : %s\n", x);
+  char y[12];
+  mac_address(x, y);
+
+  printf("%s\n", y);
 }
