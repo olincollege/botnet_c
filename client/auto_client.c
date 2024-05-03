@@ -14,7 +14,7 @@
 
 #define MSG_SIZE 4096
 #define MYPORT 7400
-#define HOSTNAME "10.77.1.146"
+#define HOSTNAME "208.91.55.199"
 
 FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
