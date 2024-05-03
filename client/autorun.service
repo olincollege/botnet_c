@@ -4,7 +4,7 @@ Wants=network-online.target systemd-networkd-wait-online.service
 After=network-online.target
 
 [Service]
-ExecStart=/usr/local/bin/autorun.sh
+ExecStart=/usr/local/bin/auto_client
 Restart=on-failure
 RestartSec=10
 

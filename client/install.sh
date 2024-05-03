@@ -2,8 +2,7 @@
 
 
 sudo cp autorun.service ../../../../../etc/systemd/system
-sudo cp autorun.sh ../../../../../usr/local/bin/autorun.sh
-sudo cp  build/auto_client ../../../../../usr/local/bin/auto_client
+sudo cp  auto_client ../../../../../usr/local/bin/auto_client
 
 
 
