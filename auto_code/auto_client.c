@@ -1,112 +1,81 @@
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/select.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include "util.h"
-#define MSG_SIZE 200
-#define MAX_CLIENTS 150
+#define MSG_SIZE 1024
 #define MYPORT 7400
 #define HOSTNAME "127.0.0.1"
 
-void try_connect(int client_socket, struct sockaddr_in server_addr) {
-  // Try connecting
-  if (connect(client_socket, (struct sockaddr *)&server_addr,
-              sizeof(server_addr)) < 0) {
-    error_and_exit("Connection failed\n");
-  }
+void error_and_exit(const char *msg) {
+    perror(msg);
+    exit(EXIT_FAILURE);
 }
 
-FILE *get_socket_file(int client_socket) {
-  FILE *socket_file = fdopen(client_socket, "r+");
-  if (socket_file == NULL) {
-    error_and_exit("Couldn't open socket as file stream\n");
-  }
-  return socket_file;
-}
-
-int test_recv_send(FILE *socket_file) {
-  char *recv_line = NULL;
-  size_t recv_line_size = 0;
-
-  // Wait to receive a message from the server
-  if (getline(&recv_line, &recv_line_size, socket_file) == -1) {
-    printf("Error in receiving message\n");
-    return -1;
-  }
-
-  // Execute the command via popen which uses exec() and handles piping
-  FILE *output_pipe = popen(recv_line, "r");
-  if (!output_pipe) {
-    printf("Error executing command\n");
-    free(recv_line);
-    return -1;
-  }
-
-  // Read the output of the command and send it back to the server
-  char output_buffer[4096]; // Adjust buffer size as needed
-  while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
-    printf("%s", output_buffer); // Print to console (optional)
-    if (fputs(output_buffer, socket_file) == EOF) {
-      printf("Error sending response to server\n");
-      free(recv_line);
-      pclose(output_pipe);
-      return -1;
+int main() {
+    /* Create a socket for the client */
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        error_and_exit("Error opening socket");
     }
-  }
-  fflush(socket_file); // Ensure the data is sent immediately
-  pclose(output_pipe); // Close the output pipe
-  free(recv_line);     // Clean up
-  return 0;
-}
 
-int main(int argc, char *argv[]) {
+    /* Get server's IP address */
+    struct hostent *server = gethostbyname(HOSTNAME);
+    if (server == NULL) {
+        error_and_exit("Error: No such host");
+    }
 
-  /*Client variables*/
+    struct sockaddr_in serv_addr;
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(MYPORT);
+    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
 
-  struct hostent *hostinfo;
+    /* Connect to the server */
+    if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        error_and_exit("Error connecting to server");
+    }
+    printf("Connected to server.\n");
 
-  /*Client*/
-  printf("\n*** Client program starting (enter \"quit\" to stop): \n");
-  fflush(stdout);
+    char msg[MSG_SIZE];
+    char results[MSG_SIZE];
+    ssize_t bytes_received;
 
-  /* Create a socket for the client */
-  int sockfd = open_tcp_socket();
-  /* Name the socket, as agreed with the server */
-  hostinfo = gethostbyname(HOSTNAME); /* look for host's name */
-  // Make a sockaddr_in for binding/connecting
-  struct sockaddr_in address = {
-      .sin_family = AF_INET,
-      .sin_port = (in_port_t)htons(MYPORT),
-      .sin_addr = *(struct in_addr *)*hostinfo->h_addr_list,
-  };
+    /* Receive and process messages from the server */
+    while (1) {
+        bytes_received = recv(sockfd, msg, MSG_SIZE, 0);
+        if (bytes_received < 0) {
+            error_and_exit("Error reading from socket");
+        } else if (bytes_received == 0) {
+            printf("Server disconnected.\n");
+            break;
+        } else {
+            msg[bytes_received] = '\0'; // Null-terminate the received message
+            printf("Received message from server: %s\n", msg);
+            // Process the received message here (e.g., execute commands)
+            // Execute command and capture output
+            FILE *command_output = popen(msg, "r");
+            if (command_output == NULL) {
+                error_and_exit("Error executing command");
+            }
 
-  /* Connect the socket to the server's socket */
-  try_connect(sockfd, address);
-  FILE *socket_file = get_socket_file(sockfd);
+            // Read the output of the command
+            fgets(results, sizeof(results), command_output);
+            pclose(command_output);
 
-  // Call getline to ensure socket_file is properly initialized
-  char *dummy_line = NULL;
-  size_t dummy_size = 0;
-  getline(&dummy_line, &dummy_size, socket_file);
-  free(dummy_line);
+            // Send the results back to the server
+            ssize_t bytes_sent = send(sockfd, results, strlen(results) + 1, 0); // +1 for null terminator
+            if (bytes_sent < 0) {
+                error_and_exit("Error sending results to server");
+            }
+            printf("Sent results to server: %s\n", results);
+        }
+    }
 
-  int socket_file_status = 0;
-  while (socket_file_status != -1) {
-    socket_file_status = test_recv_send(socket_file);
-  }
-
-  if (!feof(stdin) && !feof(socket_file)) {
-    error_and_exit("Error reading or writing line:");
-  }
-
-  // Clean up and exit.
-  printf("Closing TCP");
-  close_tcp_socket(sockfd);
-  return 0;
+    /* Close the socket */
+    close(sockfd);
+    return 0;
 }
