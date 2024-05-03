@@ -32,3 +32,5 @@ int open_tcp_socket(void);
  * Closes TCP scoket and ends program
  */
 void close_tcp_socket(int sockfd);
+
+void try_connect(int client_socket, struct sockaddr_in server_addr);

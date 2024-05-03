@@ -4,12 +4,11 @@
 #include <linux/if.h>
 #include <netdb.h>
 #include <stdio.h>
-#include <stdlib.h> // exit, EXIT_FAILURE
+#include <stdlib.h>      // exit, EXIT_FAILURE
+#include <stdnoreturn.h> // noreturn
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <stdnoreturn.h>  // noreturn
-
 
 /**
  * Print an error message and exit with a failure status code.
@@ -22,25 +21,16 @@
  *
  * @param error_msg The error message to print.
  */
-noreturn void error_and_exit(const char* error_msg);
+noreturn void error_and_exit(const char *error_msg);
 
 /**
  * Finds a list of network interfaces connected to the device
- * 
- * 
- * @param path is a string which is the path to the device's system network folder. Usually it is sys/class/net for most Linux OSs
- * 
+ *
+ *
+ * @param path is a string which is the path to the device's system network
+ * folder. Usually it is sys/class/net for most Linux OSs
+ *
  * @return a String which is the WLAN network interface name
-*/
+ */
 char *find_devices(char path[]);
 
-
-
-/**
- * Prints out the MAC address of the device given a network interface
- * 
- * @param interface is the network interface name we want to find the MAC address of
- * 
- * 
-*/
-int mac_address(char interface[]);

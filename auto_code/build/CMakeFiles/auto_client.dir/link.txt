@@ -1,1 +1,0 @@
-/usr/bin/gcc -g -rdynamic CMakeFiles/auto_client.dir/auto_client.c.o -o auto_client  libutil.a 
