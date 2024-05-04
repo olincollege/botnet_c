@@ -1,0 +1,10 @@
+# Editor configuration for Software Systems (SoftSys)
+
+# Set this to be the top-level config file for the files in this course.
+root = true
+
+# For all files, use Unix-style newlines (\n) and a newline at the end of every
+# file.
+[*]
+end_of_line = lf
+insert_final_newline = true

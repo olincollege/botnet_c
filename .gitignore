@@ -1,2 +1,3 @@
-Ips.txt
 client/build
+server/build
+.vscode/
