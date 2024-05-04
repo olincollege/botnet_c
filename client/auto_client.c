@@ -9,18 +9,14 @@
 #include <stdnoreturn.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #define MSG_SIZE 4096
 #define MYPORT 7400
-//#define HOSTNAME "127.0.0.1"
-
-//#define HOSTNAME "192.168.32.30" //lauren
-
-// define HOSTNAME "192.168.33.135" //shamama
-#define HOSTNAME "192.168.32.30"
+#define HOSTNAME "127.0.0.1"
 
 FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
