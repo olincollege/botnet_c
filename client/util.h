@@ -29,8 +29,20 @@ int open_tcp_socket(void);
 
 /**
  *
- * Closes TCP scoket and ends program
+ * Closes TCP socket and ends program
+ *
+ * @param sockfd socket file descriptor number corresponding to the socket we
+ * want to close
  */
 void close_tcp_socket(int sockfd);
 
+/**
+ * Attempt to connect to a server. Generates and error message and ends program
+ * if fails to connect
+ *
+ * @param client_socket socket descriptor of socket we want to connect to
+ * @param server_addr A sockaddr_in structure to use with bind/connect, in
+ * network order.
+ *
+ */
 void try_connect(int client_socket, struct sockaddr_in server_addr);
