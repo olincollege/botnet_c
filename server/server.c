@@ -1,3 +1,4 @@
+#include "util.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -36,8 +37,7 @@ void close_socket(int num_clients, int fd_array[], const char *msg, int server_s
         write(fd_array[i], msg, strlen(msg));
         close(fd_array[i]);
     }
-    close(server_sockfd);
-    exit(0);
+    close_tcp_socket(server_sockfd);
 }
 
 void write_msg(int fd, char msg[], fd_set readfds, char kb_msg[], int num_clients, int fd_array[]) {
@@ -71,11 +71,7 @@ int main(int argc, char *argv[]) {
     char kb_msg[MSG_SIZE + 10];
 
     /* Server Setup */
-    server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_sockfd == -1) {
-        perror("Error creating server socket");
-        return 1;
-    }
+    server_sockfd = open_tcp_socket();
 
     struct sockaddr_in server_address = {
         .sin_family = AF_INET,
