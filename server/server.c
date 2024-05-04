@@ -12,131 +12,139 @@
 #define MAX_CLIENTS 150
 #define MYPORT 7400
 
-void exitClient(int fd, fd_set *readfds, char fd_array[], int *num_clients) {
-  int i;
-  close(fd);
-  FD_CLR(fd, readfds); /*clear the leaving client from the set*/
-  for (i = 0; i < (*num_clients) - 1; i++)
-    if (fd_array[i] == fd)
-      break;
-  for (; i < (*num_clients) - 1; i++)
-    (fd_array[i]) = (fd_array[i + 1]);
-  (*num_clients)--;
+void exitClient(int fd, fd_set *readfds, int fd_array[], int *num_clients) {
+    int i;
+    close(fd); /* close the socket */
+    FD_CLR(fd, readfds); /* remove the client from the set */
+    
+    for (i = 0; i < *num_clients; i++) {
+        if (fd_array[i] == fd) { /* find the client in the array */
+            break;
+        }
+    }
+
+    /* shift elements to remove the closed client */
+    for (int j = i; j < (*num_clients) - 1; j++) {
+        fd_array[j] = fd_array[j + 1];
+    }
+    
+    (*num_clients)--; /* decrement client count */
+}
+
+void close_socket(int num_clients, int fd_array[], const char *msg, int server_sockfd) {
+    for (int i = 0; i < num_clients; i++) {
+        write(fd_array[i], msg, strlen(msg));
+        close(fd_array[i]);
+    }
+    close(server_sockfd);
+    exit(0);
+}
+
+void write_msg(int fd, char msg[], fd_set readfds, char kb_msg[], int num_clients, int fd_array[]) {
+    int result = read(fd, msg, MSG_SIZE); /* read data from open socket */
+    
+    if (result == -1) {
+        perror("Error reading from client");
+        exitClient(fd, &readfds, fd_array, &num_clients); /* remove client on error */
+    } else if (result > 0) {
+        msg[result] = '\0'; /* ensure null-termination */
+
+        strcat(kb_msg, " "); /* concat space */
+        strcat(kb_msg, msg); /* append the message */
+        
+        /* broadcast message to other clients */
+        for (int i = 0; i < num_clients; i++) {
+            if (fd_array[i] != fd) { /* don't send to the same client */
+                write(fd_array[i], kb_msg, strlen(kb_msg));
+            }
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
-  int i = 0;
-  int count = 0;
-  char pass[1];
-  int port, result;
-  int num_clients = 0;
-  int server_sockfd, client_sockfd;
-  struct sockaddr_in server_address;
-  int addresslen = sizeof(struct sockaddr_in);
-  int fd;
-  char fd_array[MAX_CLIENTS];
-  fd_set readfds, testfds, clientfds;
-  char msg[MSG_SIZE + 1];
-  char kb_msg[MSG_SIZE + 10];
+    int num_clients = 0;
+    int server_sockfd, client_sockfd;
+    int addresslen = sizeof(struct sockaddr_in);
+    int fd_array[MAX_CLIENTS];
+    fd_set readfds, testfds;
+    char msg[MSG_SIZE + 1];
+    char kb_msg[MSG_SIZE + 10];
 
-  /*Server*/
-
-  port = MYPORT;
-  printf("\n\t******************** iBOT Server ********************\n");
-
-  printf("\n*** Server waiting (enter \"quit\" to stop): \n");
-  fflush(stdout);
-
-  /* Create and name a socket for the server */
-
-  server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-  server_address.sin_family = AF_INET;
-  server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-  server_address.sin_port = htons(port);
-  bind(server_sockfd, (struct sockaddr *)&server_address, addresslen);
-
-  /* Create a connection queue and initialize a file descriptor set */
-
-  listen(server_sockfd, 1);
-  FD_ZERO(&readfds);
-  FD_SET(server_sockfd, &readfds);
-  FD_SET(0, &readfds); /* Add keyboard to file descriptor set */
-
-  /* Now wait for clients and requests */
-
-  while (1) {
-    testfds = readfds;
-    select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
-
-    /* If there is activity, find which descriptor it's on using FD_ISSET */
-
-    for (fd = 0; fd < FD_SETSIZE; fd++) {
-      if (FD_ISSET(fd, &testfds)) {
-        if (fd == server_sockfd) { /* Accept a new connection request */
-          client_sockfd = accept(server_sockfd, NULL, NULL);
-
-          if (num_clients < MAX_CLIENTS) {
-            FD_SET(client_sockfd, &readfds);
-            fd_array[num_clients] = client_sockfd;
-            /*Client ID*/
-
-            printf("\n -> xBot No. %d standby for orders\n", ++num_clients);
-            printf("\n >> ");
-            fflush(stdout);
-          } else {
-            sprintf(msg, "XSorry, too many clients.  Try again later.\n");
-            write(client_sockfd, msg, strlen(msg));
-            close(client_sockfd);
-          }
-        } else if (fd == 0) {
-          printf(" >> "); /* Process keyboard activity */
-          fgets(kb_msg, MSG_SIZE + 1, stdin);
-          if (strcmp(kb_msg, "quit\n") == 0) {
-            sprintf(msg, "iBot Server is shutting down.\n");
-            for (i = 0; i < num_clients; i++) {
-              write(fd_array[i], msg, strlen(msg));
-              close(fd_array[i]);
-            }
-            close(server_sockfd);
-            exit(0);
-          } else {
-            sprintf(msg, "%s", kb_msg);
-            for (i = 0; i < num_clients; i++)
-              write(fd_array[i], msg, strlen(msg));
-          }
-        } else if (fd) {
-          result = read(fd, msg, MSG_SIZE); /*read data from open socket*/
-          if (result == -1)
-            perror("read()");
-          else if (result > 0) {
-            msg[result] = '\0';
-
-            /*concatinate the client id with the client's message*/
-
-            strcat(kb_msg, " ");
-            strcat(kb_msg, msg + 1);
-            printf("%s\n", msg);
-
-            /*print to other clients*/
-
-            for (i = 0; i < num_clients; i++) {
-              if (fd_array[i] != fd) /*dont write msg to same client*/
-                write(fd_array[i], kb_msg, strlen(kb_msg));
-            }
-
-            /*print to server  */
-
-            /*Exit Client*/
-
-            if (msg[0] == 'X') {
-              exitClient(fd, &readfds, fd_array, &num_clients);
-            }
-          }
-        } else {
-          exitClient(fd, &readfds, fd_array,
-                     &num_clients); /* A client is leaving */
-        }
-      }
+    /* Server Setup */
+    server_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_sockfd == -1) {
+        perror("Error creating server socket");
+        return 1;
     }
-  }
+
+    struct sockaddr_in server_address = {
+        .sin_family = AF_INET,
+        .sin_port = htons(MYPORT),
+        .sin_addr.s_addr = htonl(INADDR_ANY),
+    };
+
+    if (bind(server_sockfd, (struct sockaddr *)&server_address, addresslen) == -1) {
+        perror("Error binding server socket");
+        close(server_sockfd);
+        return 1;
+    }
+
+    if (listen(server_sockfd, 5) == -1) {
+        perror("Error listening on server socket");
+        close(server_sockfd);
+        return 1;
+    }
+
+    FD_ZERO(&readfds);
+    FD_SET(server_sockfd, &readfds);
+    FD_SET(0, &readfds); /* keyboard input for quitting */
+
+    printf("\n\t******************** iBOT Server ********************\n");
+    printf("\n*** Server waiting (enter \"quit\" to stop): \n");
+
+    /* Main Server Loop */
+    while (1) {
+        testfds = readfds; /* create a copy of readfds */
+        if (select(FD_SETSIZE, &testfds, NULL, NULL, NULL) == -1) {
+            perror("Error with select");
+            close(server_sockfd);
+            return 1;
+        }
+
+        for (int fd = 0; fd < FD_SETSIZE; fd++) {
+            if (FD_ISSET(fd, &testfds)) {
+                if (fd == server_sockfd) { /* new connection */
+                    client_sockfd = accept(server_sockfd, NULL, NULL);
+                    if (client_sockfd == -1) {
+                        perror("Error accepting new client");
+                        continue; /* skip this iteration */
+                    }
+
+                    if (num_clients < MAX_CLIENTS) {
+                        FD_SET(client_sockfd, &readfds);
+                        fd_array[num_clients] = client_sockfd;
+                        num_clients++;
+                        printf("\n -> Bot No. %d connected\n", num_clients);
+                    } else {
+                        const char *full_msg = "Too many clients. Try again later.\n";
+                        write(client_sockfd, full_msg, strlen(full_msg));
+                        close(client_sockfd);
+                    }
+                } else if (fd == 0) { /* keyboard input */
+                    fgets(kb_msg, MSG_SIZE, stdin);
+                    if (strcmp(kb_msg, "quit\n") == 0) {
+                        close_socket(num_clients, fd_array, "Server shutting down.", server_sockfd);
+                    } else {
+                        /* send message to all clients */
+                        for (int i = 0; i < num_clients; i++) {
+                            write(fd_array[i], kb_msg, strlen(kb_msg));
+                        }
+                    }
+                } else { /* client data */
+                    write_msg(fd, msg, readfds, kb_msg, num_clients, fd_array);
+                }
+            }
+        }
+    }
+    return 0;
 }
