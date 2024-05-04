@@ -5,12 +5,10 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
-#include <stdlib.h> // exit, EXIT_FAILURE
 #include <stdlib.h>
-#include <stdnoreturn.h> // noreturn
+#include <stdnoreturn.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -19,9 +17,10 @@
 #define MYPORT 7400
 //#define HOSTNAME "127.0.0.1"
 
-//#define HOSTNAME "192.168.32.30"
+//#define HOSTNAME "192.168.32.30" //lauren
 
-#define HOSTNAME "10.77.1.146"
+// define HOSTNAME "192.168.33.135" //shamama
+#define HOSTNAME "192.168.32.30"
 
 FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
@@ -113,7 +112,7 @@ int main() {
       .sin_addr = *(struct in_addr *)*server->h_addr_list,
   };
 
-  printf("Trying to connect to %s", HOSTNAME);
+  printf("Trying to connect to %s \n", HOSTNAME);
   try_connect(sockfd, serv_addr);
   fflush(stdout);
   FD_ZERO(&clientfds);
