@@ -14,10 +14,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MSG_SIZE 4096
-#define MYPORT 7400
-#define HOSTNAME "127.0.0.1"
-
 FILE *recv_exec_msg(int sockfd, char msg[], int msg_size) {
   /* Receive and process messages from the server */
   int bytes_received = recv(sockfd, msg, msg_size, 0);
@@ -90,6 +86,10 @@ int mac_address(char interface[], char addr[]) {
 }
 
 int main() {
+
+  int MSG_SIZE = 4096;
+  int MYPORT = 7400;
+  char HOSTNAME[] = "127.0.0.1";
   /* Create a socket for the client */
   char fd_array[150];
   fd_set readfds, testfds, clientfds;
