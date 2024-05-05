@@ -5,7 +5,6 @@ set(INCLUDE_DIRS
 )
 
 add_library(server_functions server_functions.c server_functions.h)
-add_library(util ../util/util.c ../util/util.h)
 
 add_executable(server server.c)
 target_include_directories(server PRIVATE ${INCLUDE_DIRS})
