@@ -1,4 +1,3 @@
-#include "../util/util.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -9,138 +8,150 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "../util/util.h"
 #define MSG_SIZE 4096
 #define MAX_CLIENTS 150
 #define MYPORT 7400
 
-void exitClient(int fd, fd_set *readfds, int fd_array[], int *num_clients) {
-    int i;
-    close(fd); /* close the socket */
-    FD_CLR(fd, readfds); /* remove the client from the set */
-    
-    for (i = 0; i < *num_clients; i++) {
-        if (fd_array[i] == fd) { /* find the client in the array */
-            break;
-        }
-    }
-
-    /* shift elements to remove the closed client */
-    for (int j = i; j < (*num_clients) - 1; j++) {
-        fd_array[j] = fd_array[j + 1];
-    }
-    
-    (*num_clients)--; /* decrement client count */
+void exitClient(int fd, fd_set* readfds, char fd_array[], int* num_clients) {
+  int i;
+  close(fd);
+  FD_CLR(fd, readfds); /*clear the leaving client from the set*/
+  for (i = 0; i < (*num_clients) - 1; i++)
+    if (fd_array[i] == fd) break;
+  for (; i < (*num_clients) - 1; i++) (fd_array[i]) = (fd_array[i + 1]);
+  (*num_clients)--;
 }
 
-void close_socket(int num_clients, int fd_array[], const char *msg, int server_sockfd) {
+void error_and_close(int result, const char* error_msg, int server_sockfd) {
+  if (result == -1) {
+    perror(error_msg);
+    close(server_sockfd);
+  }
+}
+
+void close_socket(int num_clients, char fd_array[], const char* msg,
+                  int server_sockfd) {
+  for (int i = 0; i < num_clients; i++) {
+    write(fd_array[i], msg, strlen(msg));
+    close(fd_array[i]);
+  }
+  close_tcp_socket(server_sockfd);
+}
+
+void send_messages(int num_clients, char fd_array[], int server_sockfd) {
+  char message[4096] = "";
+  fgets(message, MSG_SIZE, stdin);
+  if (strcmp(message, "quit\n") == 0) {
+    close_socket(num_clients, fd_array, "Server shutting down.", server_sockfd);
+  } else {
+    for (int i = 0; i < num_clients; i++)
+      write(fd_array[i], message, strlen(message));
+  }
+}
+
+void receive_messages(int result, char recieve_msg[], int num_clients, int fd,
+                      char fd_array[]) {
+  char message[4096] = "";
+  if (result == -1)
+    perror("read()");
+  else if (result > 0) {
+    recieve_msg[result] = '\0';
+
+    /*concatinate the client id with the client's message*/
+
+    printf("%s\n", strcat(message, recieve_msg));
+
+    /*print to other clients*/
+
     for (int i = 0; i < num_clients; i++) {
-        write(fd_array[i], msg, strlen(msg));
-        close(fd_array[i]);
+      if (fd_array[i] != fd) /*dont write msg to same client*/
+        write(fd_array[i], message, strlen(message));
     }
-    close_tcp_socket(server_sockfd);
+  }
 }
 
-void write_msg(int fd, char msg[], fd_set readfds, char kb_msg[], int num_clients, int fd_array[]) {
-    int result = read(fd, msg, MSG_SIZE); /* read data from open socket */
-    
-    if (result == -1) {
-        perror("Error reading from client");
-        exitClient(fd, &readfds, fd_array, &num_clients); /* remove client on error */
-    } else if (result > 0) {
-        msg[result] = '\0'; /* ensure null-termination */
+int main(int argc, char* argv[]) {
+  int i = 0;
+  int count = 0;
+  char pass[1];
+  int port, result;
+  int num_clients = 0;
+  int server_sockfd, client_sockfd;
+  int fd;
+  char fd_array[MAX_CLIENTS];
+  fd_set readfds, testfds, clientfds;
+  char msg[MSG_SIZE + 1];
+  char kb_msg[MSG_SIZE + 10];
 
-        strcat(kb_msg, " "); /* concat space */
-        strcat(kb_msg, msg); /* append the message */
-        
-        /* broadcast message to other clients */
-        for (int i = 0; i < num_clients; i++) {
-            if (fd_array[i] != fd) { /* don't send to the same client */
-                write(fd_array[i], kb_msg, strlen(kb_msg));
-            }
+  /*Server*/
+
+  port = MYPORT;
+
+  printf("\n*** Server waiting (enter \"quit\" to stop): \n");
+  fflush(stdout);
+
+  /* Create and name a socket for the server */
+
+  server_sockfd = open_tcp_socket();
+
+  struct sockaddr_in server_address = {
+      .sin_family = AF_INET,
+      .sin_port = htons(MYPORT),
+      .sin_addr.s_addr = htonl(INADDR_ANY),
+  };
+
+  int bind_result = bind(server_sockfd, (struct sockaddr*)&server_address,
+                         sizeof(server_address));
+  error_and_close(bind_result, "Error binding server socket\n", server_sockfd);
+
+  /* Create a connection queue and initialize a file descriptor set */
+  int listen_result = listen(server_sockfd, 5);
+
+  error_and_close(listen_result, "Error binding server socket\n",
+                  server_sockfd);
+
+  FD_ZERO(&readfds);
+  FD_SET(server_sockfd, &readfds);
+  FD_SET(0, &readfds); /* Add keyboard to file descriptor set */
+
+  /* Now wait for clients and requests */
+
+  while (1) {
+    testfds = readfds;
+    int select_result = select(FD_SETSIZE, &testfds, NULL, NULL, NULL);
+    error_and_close(select_result, "Select Error", server_sockfd);
+    /* If there is activity, find which descriptor it's on using FD_ISSET */
+
+    for (fd = 0; fd < FD_SETSIZE; fd++) {
+      if (FD_ISSET(fd, &testfds)) {
+        if (fd == server_sockfd) {
+          /* Accept a new connection request */
+          client_sockfd = accept(server_sockfd, NULL, NULL);
+
+          if (num_clients < MAX_CLIENTS) {
+            FD_SET(client_sockfd, &readfds);
+            fd_array[num_clients] = client_sockfd;
+            /*Client ID*/
+            printf("\n -> Server No. %d standby for orders\n", ++num_clients);
+            fflush(stdout);
+          } else {
+            sprintf(msg, "Too many clients.  Try again later.\n");
+            write(client_sockfd, msg, strlen(msg));
+            close(client_sockfd);
+          }
+        } else if (fd == 0) {
+          // KEYBOARD ACTIVITY
+          send_messages(num_clients, fd_array, server_sockfd);
+        } else if (fd) {
+          // CLIENT RECEIVE
+          result = read(fd, msg, MSG_SIZE); /*read data from open socket*/
+          receive_messages(result, msg, num_clients, fd, fd_array);
+        } else {
+          exitClient(fd, &readfds, fd_array,
+                     &num_clients); /* A client is leaving */
         }
+      }
     }
-}
-
-int main(int argc, char *argv[]) {
-    int num_clients = 0;
-    int server_sockfd, client_sockfd;
-    int addresslen = sizeof(struct sockaddr_in);
-    int fd_array[MAX_CLIENTS];
-    fd_set readfds, testfds;
-    char msg[MSG_SIZE + 1];
-    char kb_msg[MSG_SIZE + 10];
-
-    /* Server Setup */
-    server_sockfd = open_tcp_socket();
-
-    struct sockaddr_in server_address = {
-        .sin_family = AF_INET,
-        .sin_port = htons(MYPORT),
-        .sin_addr.s_addr = htonl(INADDR_ANY),
-    };
-
-    if (bind(server_sockfd, (struct sockaddr *)&server_address, addresslen) == -1) {
-        perror("Error binding server socket");
-        close(server_sockfd);
-        return 1;
-    }
-
-    if (listen(server_sockfd, 5) == -1) {
-        perror("Error listening on server socket");
-        close(server_sockfd);
-        return 1;
-    }
-
-    FD_ZERO(&readfds);
-    FD_SET(server_sockfd, &readfds);
-    FD_SET(0, &readfds); /* keyboard input for quitting */
-
-    printf("\n\t******************** iBOT Server ********************\n");
-    printf("\n*** Server waiting (enter \"quit\" to stop): \n");
-
-    /* Main Server Loop */
-    while (1) {
-        testfds = readfds; /* create a copy of readfds */
-        if (select(FD_SETSIZE, &testfds, NULL, NULL, NULL) == -1) {
-            perror("Error with select");
-            close(server_sockfd);
-            return 1;
-        }
-
-        for (int fd = 0; fd < FD_SETSIZE; fd++) {
-            if (FD_ISSET(fd, &testfds)) {
-                if (fd == server_sockfd) { /* new connection */
-                    client_sockfd = accept(server_sockfd, NULL, NULL);
-                    if (client_sockfd == -1) {
-                        perror("Error accepting new client");
-                        continue; /* skip this iteration */
-                    }
-
-                    if (num_clients < MAX_CLIENTS) {
-                        FD_SET(client_sockfd, &readfds);
-                        fd_array[num_clients] = client_sockfd;
-                        num_clients++;
-                        printf("\n -> Bot No. %d connected\n", num_clients);
-                    } else {
-                        const char *full_msg = "Too many clients. Try again later.\n";
-                        write(client_sockfd, full_msg, strlen(full_msg));
-                        close(client_sockfd);
-                    }
-                } else if (fd == 0) { /* keyboard input */
-                    fgets(kb_msg, MSG_SIZE, stdin);
-                    if (strcmp(kb_msg, "quit\n") == 0) {
-                        close_socket(num_clients, fd_array, "Server shutting down.", server_sockfd);
-                    } else {
-                        /* send message to all clients */
-                        for (int i = 0; i < num_clients; i++) {
-                            write(fd_array[i], kb_msg, strlen(kb_msg));
-                        }
-                    }
-                } else { /* client data */
-                    write_msg(fd, msg, readfds, kb_msg, num_clients, fd_array);
-                }
-            }
-        }
-    }
-    return 0;
+  }
 }
