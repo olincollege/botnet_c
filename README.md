@@ -40,6 +40,13 @@ In order to compile and run the server so that it can communicate with clients, 
 ### Client's Side
 First of all, we created a client socket, whose address information is defined using hostname (host server IP address). Then, the client sends out a request to make a connection with the corresponding server socket that it desires to communicate with. If the client received a message from the server, it first reads the given message from the socket file descriptor. The message is then executed using `popen`, which helps to create a pipe, fork the process, and run the child process on the shell. If the message is `"quit"`, the socket is then closed so that the client connection is ended.
 
+* autorun.service: Used to call autorun.sh automatically client-side
+* install.sh: Shell script using systemd to install and start autorun
+* autorun.sh: Shell script containing call to auto_client binary
+* auto_client: Script opening client socket, connecting to host server, and running sent commands
+
+
+
 To compile and run the client's side, first compile the source file `auto_client.c` and run `./auto_client` in the same file directory. 
 
 ## MAC Address
