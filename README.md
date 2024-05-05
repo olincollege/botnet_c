@@ -1,24 +1,53 @@
-# Botnet-using-c
-Botnet using c
-I will consider you comfortable with client-server programming in C, using Berkeley UNIX standards. If you are not, please refer to the series of articles on socket API.
+# Botnet Implementation
+A botnet is a system of a host server and multiple client servers, in which the host server is able to send commands to clients. Infect client computers connect with server and clients through desired communication protocol, and use hacked devices’ compute power for tasks unknown to device owners. In this project, we implemented botnet by writing the functionalities of a command script using transmission control protocol (TCP).
 
-The idea of my management system was inspired by botnets (you’re right, the very technology used by crackers to DDoS websites). A botnet is nothing but a group of infected computers controlled by the cracker using a command-and-control channel to perform various tasks, which may be to DDoS a website or to click advertisements for the cracker’s profit. For more information on botnets, please refer to the various DDoS articles published earlier.
+## Prerequisites 
+* cmake: Used to compile and build c files and requires a CMakeLists.txt file
+* make: compiles from source files and a Makefile
+* gcc: Alternative to cmake
+* Clang-tidy: Linting
+* Git: Access GitHut repo
+* Criterion: For testing
 
-Let us now design and develop a system that works like a botnet (a bot or client, and a server). Our server will be responsible for managing clients and issuing commands to clients or bots, whereas the bot will receive commands and execute them on each host. We need the following tools for development:
+## Usage
+```
+git clone git@github.com:olincollege/botnet_c.git
 
-GNU C compiler
-Any text editor
-Any Linux distribution
-For details on this, please refer to the above mentioned series of articles on socket API. We will alter the code of the chat client and insert the following instructions below the point where the message is received — code that will execute the following:
+# Run server
+cd ./server
+./build_server.sh
+./server
 
-system (command_name_and _arguments);
-Because our client code takes the port number and IP address of the server machine as arguments, for simplicity, let us create a shell script file named start.sh with the following code:
+# Run client
+cd ./client
+./build_client.sh
+./auto_client
 
-. /client -p port_no ip_of_server
-Deploying
+# Run tests
+cd ./test
+./test_server
+./test_util
+```
 
-First, let us run the server program, which will listen on port 7400 (you can change this in the code). Now, when all the other systems boot, they will automatically run the client program with root privileges (since we have added the client initiator script start.sh into startup applications). As we are demonstrating the system, let the bot run in the foreground — but in real deployment scenarios, it will be run as a daemon process.
+## Client-Server Connections
+We adopted the client-server model for our implementation, and we set up auto-running server and client implementations in two separate directories. Detailed description and instructions to run the program are as follows.
 
-As the client executes a run, it will automatically connect to the server and wait for commands. When it receives commands, it will execute them. Figure 1 shows the server start up and issue commands (here, I named it iLinuxBot).
+### Server's Side
+On the server's side, we first defined the port of communications to allow maximum message sizes as well as maximum number of clients being connected. We then created and binded a socket to the port, so that the server waits and listens on the socket. Whenever the client's side sends out a connection request through the socket, the server first accepts the request, and then automatically sends out a message to the client. The server can also read the client's MAC address.
 
-http://opensourceforu.efytimes.com/2012/05/ilinuxbot-designing-botnets-to-manage-linux-clients/
+In order to compile and run the server so that it can communicate with clients, first compile server from its source file, and run `./server`. When client and server are connnected, run CLI functions from the server on clients. Make sure that the ports specified in `server.c` and `start.sh` match (both are set at 7400 by default). `start.sh` also contains an IP address that should match the IP address of host server.
+
+### Client's Side
+First of all, we created a client socket, whose address information is defined using hostname (host server IP address). Then, the client sends out a request to make a connection with the corresponding server socket that it desires to communicate with. If the client received a message from the server, it first reads the given message from the socket file descriptor. The message is then executed using `popen`, which helps to create a pipe, fork the process, and run the child process on the shell. If the message is `"quit"`, the socket is then closed so that the client connection is ended.
+
+* autorun.service: Used to call autorun.sh automatically client-side
+* install.sh: Shell script using systemd to install and start autorun
+* autorun.sh: Shell script containing call to auto_client binary
+* auto_client: Script opening client socket, connecting to host server, and running sent commands
+
+
+
+To compile and run the client's side, first compile the source file `auto_client.c` and run `./auto_client` in the same file directory. 
+
+## MAC Address
+To avoid using public IP addresses for testing purposes, we auto-generated Media Access Control (MAC) addresses in terms of 12-digit hexadecimal values that are assigned to each device connected to network. These MAC addresses are required when we try to locate each individual device, and they can be found on the device network interface card (NIC).
