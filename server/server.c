@@ -14,18 +14,15 @@
 #define MAX_CLIENTS 150
 #define MYPORT 7400
 
-int main(int argc, char* argv[]) {
-  int i = 0;
+int main() {
   int count = 0;
-  char pass[1];
-  int port, result;
+  ssize_t result;
   int num_clients = 0;
   int server_sockfd, client_sockfd;
   int fd;
   char fd_array[MAX_CLIENTS];
-  fd_set readfds, testfds, clientfds;
+  fd_set readfds, testfds;
   char msg[MSG_SIZE + 1];
-  char kb_msg[MSG_SIZE + 10];
 
   /*Server*/
 
