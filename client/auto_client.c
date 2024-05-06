@@ -9,6 +9,7 @@
 
 #include "../util/util.h"
 #include "client_functions.h"
+
 int main() {
   const int MSG_SIZE = 4096;
   const uint16_t MYPORT = 7400;
@@ -57,7 +58,8 @@ int main() {
     memset(result_buffer, 0,
            strlen(result_buffer));  // clear result_buffer
     // Read the output of the command and send it back to the server
-    while (fgets(output_buffer, sizeof(output_buffer), output_pipe) != NULL) {
+    while (fgets(output_buffer, (int)sizeof(output_buffer), output_pipe) !=
+           NULL) {
       strcat(result_buffer,
              output_buffer);  // Append each line to the result buffer
     }
@@ -72,7 +74,8 @@ int main() {
     }
 
     // Ensure the data is sent immediately
-    pclose(output_pipe);
+    if (pclose(output_pipe) == -1) {
+      error_and_exit("Error closing pipe to send data");
+    }
   }
-  return 0;
 }
