@@ -13,7 +13,8 @@ int main() {
   const int MSG_SIZE = 4096;
   const uint16_t MYPORT = 7400;
   const char HOSTNAME[] = "127.0.0.1";
-  const char mac_addr[12];
+  const int MAC_SIZE = 14;
+  char mac_addr[MAC_SIZE];
 
   /* Create a socket for the client */
 
@@ -71,7 +72,6 @@ int main() {
     }
 
     // Ensure the data is sent immediately
-    fflush(stdout);
     pclose(output_pipe);
   }
   return 0;

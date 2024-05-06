@@ -15,13 +15,11 @@
 
 #include "../util/util.h"
 
-FILE* recv_exec_msg(int sockfd, char msg[], int msg_size) {
+FILE* recv_exec_msg(int sockfd, char msg[], size_t msg_size) {
   /* Receive and process messages from the server */
-  int bytes_received = recv(sockfd, msg, msg_size, 0);
+  ssize_t bytes_received = recv(sockfd, msg, msg_size, 0);
 
-  if (bytes_received < 0) {
-    error_and_exit("Error reading from socket \n");
-  } else if (bytes_received == 0) {
+  if (bytes_received == 0) {
     error_and_exit("Server disconnected \n");
   } else {
     msg[bytes_received] = '\0';  // Null-terminate the received message
@@ -72,7 +70,7 @@ int mac_address(char interface[], char addr[]) {
     error_and_exit("Can't open socket\n");
   }
   strcpy(s.ifr_name, interface);
-  if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
+  if (0 == ioctl(fd, SIOCGIFHWADDR, (int*)&s)) {
     addr[0] = '\0';  // Initialize addr as an empty string
     for (int i = 0; i < 6; ++i) {
       sprintf(temp, "%02X", (unsigned char)s.ifr_hwaddr.sa_data[i]);
