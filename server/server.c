@@ -10,11 +10,12 @@
 
 #include "../util/util.h"
 #include "server_functions.h"
-#define MSG_SIZE 4096
-#define MAX_CLIENTS 150
-#define MYPORT 7400
 
 int main() {
+  int MYPORT = 7400;
+  int MAX_CLIENTS = 150;
+  int MSG_SIZE = 4096;
+
   int count = 0;
   ssize_t result;
   int num_clients = 0;
@@ -25,8 +26,6 @@ int main() {
   char msg[MSG_SIZE + 1];
 
   /*Server*/
-
-  port = MYPORT;
 
   printf("\n*** Server waiting (enter \"quit\" to stop): \n");
   fflush(stdout);
