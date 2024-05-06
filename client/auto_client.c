@@ -13,6 +13,8 @@ int main() {
   const int MSG_SIZE = 4096;
   const uint16_t MYPORT = 7400;
   const char HOSTNAME[] = "127.0.0.1";
+  const char mac_addr[12];
+
   /* Create a socket for the client */
 
   int sockfd = open_tcp_socket();
@@ -31,7 +33,6 @@ int main() {
 
   printf("Trying to connect to %s \n", HOSTNAME);
   try_connect(sockfd, serv_addr);
-  fflush(stdout);
 
   printf("Connected to server.\n");
   char msg[MSG_SIZE];
@@ -40,7 +41,6 @@ int main() {
 
   // Send MAC Address Once
   char* wl_interface = find_devices("/sys/class/net");
-  char mac_addr[12];
   if (mac_address(wl_interface, mac_addr) == -1) {
     printf("Failed to get MAC Address");
   }
@@ -69,11 +69,10 @@ int main() {
       close(sockfd);
       error_and_exit("Error sending response to server\n");
     }
-    fflush(stdout);  // Ensure the data is sent immediately
+
+    // Ensure the data is sent immediately
+    fflush(stdout);
     pclose(output_pipe);
   }
-
-  /* Close the socket */
-  close(sockfd);
   return 0;
 }
