@@ -12,11 +12,10 @@
 #include "server_functions.h"
 
 int main() {
-  int MYPORT = 7400;
+  const uint16_t MYPORT = 7400;
   int MAX_CLIENTS = 150;
   int MSG_SIZE = 4096;
 
-  int count = 0;
   ssize_t result;
   int num_clients = 0;
   int server_sockfd, client_sockfd;
@@ -36,7 +35,7 @@ int main() {
 
   struct sockaddr_in server_address = {
       .sin_family = AF_INET,
-      .sin_port = htons(MYPORT),
+      .sin_port = (uint16_t)htons(MYPORT),
       .sin_addr.s_addr = htonl(INADDR_ANY),
   };
 
@@ -70,7 +69,7 @@ int main() {
 
           if (num_clients < MAX_CLIENTS) {
             FD_SET(client_sockfd, &readfds);
-            fd_array[num_clients] = client_sockfd;
+            fd_array[num_clients] = (char)client_sockfd;
             /*Client ID*/
             printf("\n -> Server No. %d standby for orders\n", ++num_clients);
             fflush(stdout);
@@ -84,8 +83,9 @@ int main() {
           send_messages(num_clients, fd_array, server_sockfd);
         } else if (fd) {
           // CLIENT RECEIVE
-          result = read(fd, msg, MSG_SIZE); /*read data from open socket*/
-          receive_messages(result, msg, num_clients, fd, fd_array);
+          result =
+              read(fd, msg, (size_t)MSG_SIZE); /*read data from open socket*/
+          receive_messages((int)result, msg, num_clients, fd, fd_array);
         } else {
           exitClient(fd, &readfds, fd_array,
                      &num_clients); /* A client is leaving */

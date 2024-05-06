@@ -35,11 +35,11 @@ FILE* recv_exec_msg(int sockfd, char msg[], size_t msg_size) {
 }
 
 char* find_devices(char path[]) {
-  struct dirent* dir_entry;  // Pointer for directory entry
   char network_interface[20];
 
   // opendir() returns a pointer of DIR type.
   DIR* directory = opendir(path);
+  struct dirent* dir_entry = readdir(directory);  // Pointer for directory entry
 
   // Error Checking
   if (directory == NULL) {
